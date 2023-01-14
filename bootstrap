@@ -4,7 +4,8 @@ if [ $# -eq 1 ]; then
     if [ "$1" = "clean" ]; then
         git clean -dfX
         rm -rf common/term cross-detect freestanding-headers \
-           stivale limine-efi libgcc-binaries
+           stivale limine-efi libgcc-binaries \
+           common-uefi-x86-64
         exit
     fi
 fi

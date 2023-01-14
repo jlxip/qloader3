@@ -87,26 +87,6 @@ fi
 AC_SUBST(BUILD_BIOS)
 AC_SUBST(BUILD_LIMINE_DEPLOY)
 
-BUILD_UEFI_IA32="$BUILD_ALL"
-
-AC_ARG_ENABLE([uefi-ia32],
-    AS_HELP_STRING([--enable-uefi-ia32], [enable building the IA-32 UEFI port]),
-    BUILD_UEFI_IA32="$enableval")
-
-if test "x$BUILD_UEFI_IA32" = "xno"; then
-    BUILD_UEFI_IA32=""
-else
-    (
-    $MKDIR_P "$BUILDDIR/cross-files"
-    cd "$BUILDDIR/cross-files"
-    TRIPLET=i686-elf WANT_CROSS_LD=yes WANT_CROSS_OBJCOPY=yes WANT_CROSS_OBJDUMP=yes "$SRCDIR/cross-detect/configure"
-    ) || exit 1
-    BUILD_UEFI_IA32="limine-uefi-ia32"
-    NEED_NASM=yes
-fi
-
-AC_SUBST(BUILD_UEFI_IA32)
-
 BUILD_UEFI_X86_64="$BUILD_ALL"
 
 AC_ARG_ENABLE([uefi-x86-64],
