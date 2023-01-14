@@ -16,14 +16,7 @@
 #include <drivers/vbe.h>
 #include <drivers/vga_textmode.h>
 #include <console.h>
-#include <protos/stivale.h>
 #include <protos/stivale2.h>
-#include <protos/linux.h>
-#include <protos/chainload.h>
-#include <protos/chainload_next.h>
-#include <protos/multiboot1.h>
-#include <protos/multiboot2.h>
-#include <protos/limine.h>
 
 static char *menu_branding = NULL;
 static char *menu_branding_colour = NULL;
@@ -941,28 +934,5 @@ noreturn void boot(char *config) {
         cmdline = "";
     }
 
-    char *proto = config_get_value(config, 0, "PROTOCOL");
-    if (proto == NULL) {
-        panic(true, "Boot protocol not specified for this entry");
-    }
-
-    if (!strcmp(proto, "stivale1") || !strcmp(proto, "stivale")) {
-        stivale_load(config, cmdline);
-    } else if (!strcmp(proto, "stivale2")) {
-        stivale2_load(config, cmdline);
-    } else if (!strcmp(proto, "limine")) {
-        limine_load(config, cmdline);
-    } else if (!strcmp(proto, "linux")) {
-        linux_load(config, cmdline);
-    } else if (!strcmp(proto, "multiboot1") || !strcmp(proto, "multiboot")) {
-        multiboot1_load(config, cmdline);
-    } else if (!strcmp(proto, "multiboot2")) {
-        multiboot2_load(config, cmdline);
-    } else if (!strcmp(proto, "chainload_next")) {
-        chainload_next(config);
-    } else if (!strcmp(proto, "chainload")) {
-        chainload(config);
-    }
-
-    panic(true, "Unsupported protocol specified for kernel.");
+    stivale2_load(config, cmdline);
 }
