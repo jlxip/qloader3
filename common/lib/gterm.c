@@ -7,7 +7,6 @@
 #include <lib/print.h>
 #include <lib/uri.h>
 #include <lib/fb.h>
-#include <lib/image.h>
 #include <mm/pmm.h>
 #include <term/term.h>
 #include <term/backends/framebuffer.h>
@@ -362,8 +361,6 @@ static const uint8_t builtin_font[] = {
 
 struct fb_info fbinfo;
 
-static struct image *background;
-
 static size_t margin = 64;
 static size_t margin_gradient = 4;
 
@@ -421,117 +418,6 @@ static uint32_t blend_gradient_from_box(size_t x, size_t y, uint32_t bg_px, uint
     uint8_t new_alpha     = A(hex) + gradient_step * distance;
 
     return colour_blend((hex & 0xffffff) | (new_alpha << 24), bg_px);
-}
-
-typedef size_t fixedp6; // the last 6 bits are the fixed point part
-static size_t fixedp6_to_int(fixedp6 value) { return value / 64; }
-static fixedp6 int_to_fixedp6(size_t value) { return value * 64; }
-
-// Draw rect at coordinates, copying from the image to the fb and canvas, applying fn on every pixel
-__attribute__((always_inline)) static inline void genloop(size_t xstart, size_t xend, size_t ystart, size_t yend, uint32_t (*blend)(size_t x, size_t y, uint32_t orig)) {
-    uint8_t *img = background->img;
-    const size_t img_width = background->img_width, img_height = background->img_height, img_pitch = background->pitch, colsize = background->bpp / 8;
-
-    switch (background->type) {
-    case IMAGE_TILED:
-        for (size_t y = ystart; y < yend; y++) {
-            size_t image_y = y % img_height, image_x = xstart % img_width;
-            const size_t off = img_pitch * (img_height - 1 - image_y);
-            size_t canvas_off = fbinfo.framebuffer_width * y;
-            for (size_t x = xstart; x < xend; x++) {
-                uint32_t img_pixel = *(uint32_t*)(img + image_x * colsize + off);
-                uint32_t i = blend(x, y, img_pixel);
-                bg_canvas[canvas_off + x] = i;
-                if (image_x++ == img_width) image_x = 0; // image_x = x % img_width, but modulo is too expensive
-            }
-        }
-        break;
-
-    case IMAGE_CENTERED:
-        for (size_t y = ystart; y < yend; y++) {
-            size_t image_y = y - background->y_displacement;
-            const size_t off = img_pitch * (img_height - 1 - image_y);
-            size_t canvas_off = fbinfo.framebuffer_width * y;
-            if (image_y >= background->y_size) { /* external part */
-                for (size_t x = xstart; x < xend; x++) {
-                    uint32_t i = blend(x, y, background->back_colour);
-                    bg_canvas[canvas_off + x] = i;
-                }
-            }
-            else { /* internal part */
-                for (size_t x = xstart; x < xend; x++) {
-                    size_t image_x = (x - background->x_displacement);
-                    bool x_external = image_x >= background->x_size;
-                    uint32_t img_pixel = *(uint32_t*)(img + image_x * colsize + off);
-                    uint32_t i = blend(x, y, x_external ? background->back_colour : img_pixel);
-                    bg_canvas[canvas_off + x] = i;
-                }
-            }
-        }
-        break;
-    // For every pixel, ratio = img_width / gterm_width, img_x = x * ratio, x = (xstart + i)
-    // hence x = xstart * ratio + i * ratio
-    // so you can set x = xstart * ratio, and increment by ratio at each iteration
-    case IMAGE_STRETCHED:
-        for (size_t y = ystart; y < yend; y++) {
-            size_t img_y = (y * img_height) / fbinfo.framebuffer_height; // calculate Y with full precision
-            size_t off = img_pitch * (img_height - 1 - img_y);
-            size_t canvas_off = fbinfo.framebuffer_width * y;
-
-            size_t ratio = int_to_fixedp6(img_width) / fbinfo.framebuffer_width;
-            fixedp6 img_x = ratio * xstart;
-            for (size_t x = xstart; x < xend; x++) {
-                uint32_t img_pixel = *(uint32_t*)(img + fixedp6_to_int(img_x) * colsize + off);
-                uint32_t i = blend(x, y, img_pixel);
-                bg_canvas[canvas_off + x] = i;
-                img_x += ratio;
-            }
-        }
-        break;
-    }
-}
-
-static uint32_t blend_external(size_t x, size_t y, uint32_t orig) { (void)x; (void)y; return orig; }
-static uint32_t blend_internal(size_t x, size_t y, uint32_t orig) { (void)x; (void)y; return colour_blend(default_bg, orig); }
-static uint32_t blend_margin(size_t x, size_t y, uint32_t orig) { return blend_gradient_from_box(x, y, orig, default_bg); }
-
-static void loop_external(size_t xstart, size_t xend, size_t ystart, size_t yend) { genloop(xstart, xend, ystart, yend, blend_external); }
-static void loop_margin(size_t xstart, size_t xend, size_t ystart, size_t yend) { genloop(xstart, xend, ystart, yend, blend_margin); }
-static void loop_internal(size_t xstart, size_t xend, size_t ystart, size_t yend) { genloop(xstart, xend, ystart, yend, blend_internal); }
-
-static void generate_canvas(void) {
-    if (background) {
-        bg_canvas_size = fbinfo.framebuffer_width * fbinfo.framebuffer_height * sizeof(uint32_t);
-        bg_canvas = ext_mem_alloc(bg_canvas_size);
-
-        int64_t margin_no_gradient = (int64_t)margin - margin_gradient;
-
-        if (margin_no_gradient < 0) {
-            margin_no_gradient = 0;
-        }
-
-        size_t scan_stop_x = fbinfo.framebuffer_width - margin_no_gradient;
-        size_t scan_stop_y = fbinfo.framebuffer_height - margin_no_gradient;
-
-        loop_external(0, fbinfo.framebuffer_width, 0, margin_no_gradient);
-        loop_external(0, fbinfo.framebuffer_width, scan_stop_y, fbinfo.framebuffer_height);
-        loop_external(0, margin_no_gradient, margin_no_gradient, scan_stop_y);
-        loop_external(scan_stop_x, fbinfo.framebuffer_width, margin_no_gradient, scan_stop_y);
-
-        size_t gradient_stop_x = fbinfo.framebuffer_width - margin;
-        size_t gradient_stop_y = fbinfo.framebuffer_height - margin;
-
-        if (margin_gradient) {
-            loop_margin(margin_no_gradient, scan_stop_x, margin_no_gradient, margin);
-            loop_margin(margin_no_gradient, scan_stop_x, gradient_stop_y, scan_stop_y);
-            loop_margin(margin_no_gradient, margin, margin, gradient_stop_y);
-            loop_margin(gradient_stop_x, scan_stop_x, margin, gradient_stop_y);
-        }
-
-        loop_internal(margin, gradient_stop_x, margin, gradient_stop_y);
-    } else {
-        bg_canvas = NULL;
-    }
 }
 
 static bool last_serial = false;
@@ -687,24 +573,8 @@ bool gterm_init(char *config, size_t width, size_t height) {
         default_fg_bright = strtoui(theme_foreground_bright, NULL, 16);
     }
 
-    background = NULL;
-    char *background_path = config_get_value(config, 0, "TERM_WALLPAPER");
-    if (background_path != NULL) {
-        struct file_handle *bg_file;
-        if ((bg_file = uri_open(background_path)) != NULL) {
-            background = image_open(bg_file);
-            fclose(bg_file);
-        }
-    }
-
-    if (background == NULL) {
-        margin = 0;
-        margin_gradient = 0;
-    } else {
-        if (theme_background == NULL) {
-            default_bg = 0x80000000;
-        }
-    }
+    margin = 0;
+    margin_gradient = 0;
 
     char *theme_margin = config_get_value(config, 0, "TERM_MARGIN");
     if (theme_margin != NULL) {
@@ -714,20 +584,6 @@ bool gterm_init(char *config, size_t width, size_t height) {
     char *theme_margin_gradient = config_get_value(config, 0, "TERM_MARGIN_GRADIENT");
     if (theme_margin_gradient != NULL) {
         margin_gradient = strtoui(theme_margin_gradient, NULL, 10);
-    }
-
-    if (background != NULL) {
-        char *background_layout = config_get_value(config, 0, "TERM_WALLPAPER_STYLE");
-        if (background_layout != NULL && strcmp(background_layout, "centered") == 0) {
-            char *background_colour = config_get_value(config, 0, "TERM_BACKDROP");
-            if (background_colour == NULL)
-                background_colour = "0";
-            uint32_t bg_col = strtoui(background_colour, NULL, 16);
-            image_make_centered(background, fbinfo.framebuffer_width, fbinfo.framebuffer_height, bg_col);
-        } else if (background_layout != NULL && strcmp(background_layout, "tiled") == 0) {
-        } else {
-            image_make_stretched(background, fbinfo.framebuffer_width, fbinfo.framebuffer_height);
-        }
     }
 
     size_t font_width = 8;
@@ -789,7 +645,7 @@ no_load_font:;
         }
     }
 
-    generate_canvas();
+    bg_canvas = NULL;
 
     term = fbterm_init(ext_mem_alloc,
                 (void *)(uintptr_t)fbinfo.framebuffer_addr,
@@ -803,9 +659,6 @@ no_load_font:;
                 margin);
 
     pmm_free(font, FONT_MAX);
-    if (bg_canvas != NULL) {
-        pmm_free(bg_canvas, bg_canvas_size);
-    }
 
     if (term == NULL) {
         return false;

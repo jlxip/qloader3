@@ -9,7 +9,6 @@
 #include <lib/misc.h>
 #include <lib/real.h>
 #include <lib/print.h>
-#include <lib/image.h>
 #include <lib/config.h>
 #include <lib/uri.h>
 #include <lib/term.h>

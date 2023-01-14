@@ -81,8 +81,6 @@ Limine graphical terminal control options. They are ignored if using text mode.
 * `TERM_FOREGROUND` - Terminal text foreground colour (RRGGBB).
 * `TERM_MARGIN` - Set the amount of margin around the terminal.
 * `TERM_MARGIN_GRADIENT` - Set the thickness in pixel for the gradient around the terminal.
-* `TERM_WALLPAPER` - URI where to find the .BMP file to use as wallpaper.
-* `TERM_WALLPAPER_STYLE` - The style which will be used to display the wallpaper image: `tiled`, `centered`, or `stretched`. Default is `stretched`.
 * `TERM_BACKDROP` - When the background style is `centered`, this specifies the colour of the backdrop for parts of the screen not covered by the background image, in RRGGBB format.
 
 Editor control options.

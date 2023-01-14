@@ -1,6 +1,11 @@
 # qloader3
 
-qloader3 is a highly opinionated stripped down fork of the `v3.0-branch` of [the Limine bootloader](https://github.com/limine-bootloader/limine). It removes all boot protocols but stivale2, as well as all filesystems except FAT32 and ISO9660. Support for IA-32, PXE, and background images is also dropped.
+qloader3 is a highly opinionated stripped down fork of the `v3.0-branch` of [the Limine bootloader](https://github.com/limine-bootloader/limine). It removes:
+- All boot protocols but stivale2
+- All filesystems except FAT32 and ISO9660
+- IA-32 support
+- PXE
+- Wallpapers
 
 ## History
 In the beginning (circa 2020), there was [the Stivale boot protocol](https://github.com/stivale/stivale/blob/master/STIVALE.md), a pretty neat, albeit limited, boot protocol for hobby operating system projects. Given its weaknesses, [Stivale2](https://github.com/stivale/stivale/blob/master/STIVALE2.md) was created, which is simple (yet powerful) enough to write a bare bones kernel pretty quickly. It's beautiful: easy to understand, easy to implement, and easy to extend once your kernel gets bigger.
