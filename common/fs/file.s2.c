@@ -11,7 +11,6 @@
 #include <mm/pmm.h>
 #include <lib/part.h>
 #include <lib/libc.h>
-#include <pxe/tftp.h>
 
 char *fs_get_label(struct volume *part) {
     char *ret;
@@ -53,15 +52,6 @@ struct file_handle *fopen(struct volume *part, const char *filename) {
     filename = filename_new;
 
     struct file_handle *ret;
-
-#if defined (BIOS)
-    if (part->pxe) {
-        if ((ret = tftp_open(0, 69, filename)) == NULL) {
-            return NULL;
-        }
-        goto success;
-    }
-#endif
 
     if ((ret = echfs_open(part, filename)) != NULL) {
         return ret;

@@ -6,7 +6,6 @@
 #include <mm/pmm.h>
 #include <fs/file.h>
 #include <lib/print.h>
-#include <pxe/tftp.h>
 
 static bool config_get_entry_name(char *ret, size_t index, size_t limit);
 static char *config_get_entry(size_t *size, size_t index);
@@ -42,22 +41,6 @@ int init_config_disk(struct volume *part) {
 
     return init_config(config_size);
 }
-
-#if defined (BIOS)
-int init_config_pxe(void) {
-    struct file_handle *f;
-    if ((f = tftp_open(0, 69, "limine.cfg")) == NULL) {
-        return -1;
-    }
-
-    size_t config_size = f->size + 2;
-    config_addr = ext_mem_alloc(config_size);
-
-    fread(f, config_addr, 0, f->size);
-
-    return init_config(config_size);
-}
-#endif
 
 #define NOT_CHILD      (-1)
 #define DIRECT_CHILD   0

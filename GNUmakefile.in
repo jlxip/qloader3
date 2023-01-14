@@ -33,7 +33,6 @@ override BUILD_UEFI_X86_64 := @BUILD_UEFI_X86_64@
 override BUILD_UEFI_IA32 := @BUILD_UEFI_IA32@
 override BUILD_UEFI_AARCH64 := @BUILD_UEFI_AARCH64@
 override BUILD_CD_EFI := @BUILD_CD_EFI@
-override BUILD_PXE := @BUILD_PXE@
 override BUILD_CD := @BUILD_CD@
 override BUILD_LIMINE_DEPLOY := @BUILD_LIMINE_DEPLOY@
 
@@ -127,9 +126,6 @@ endif
 ifneq ($(BUILD_CD_EFI),no)
 	$(INSTALL_DATA) '$(call SHESCAPE,$(BINDIR))/limine-cd-efi.bin' '$(call SHESCAPE,$(DESTDIR)$(ACDATAROOTDIR))/limine/'
 endif
-ifneq ($(BUILD_PXE),no)
-	$(INSTALL_DATA) '$(call SHESCAPE,$(BINDIR))/limine-pxe.bin' '$(call SHESCAPE,$(DESTDIR)$(ACDATAROOTDIR))/limine/'
-endif
 ifeq ($(BUILD_UEFI_X86_64),limine-uefi-x86-64)
 	$(INSTALL_DATA) '$(call SHESCAPE,$(BINDIR))/BOOTX64.EFI' '$(call SHESCAPE,$(DESTDIR)$(ACDATAROOTDIR))/limine/'
 endif
@@ -167,9 +163,6 @@ $(call MKESCAPE,$(BUILDDIR))/stage1.stamp: $(STAGE1_FILES) $(call MKESCAPE,$(BUI
 	cd '$(call SHESCAPE,$(SRCDIR))/stage1/hdd' && nasm bootsect.asm @WERROR@ -fbin -DBUILDDIR="'"'$(call NASMESCAPE,$(BUILDDIR))'"'" -o '$(call SHESCAPE,$(BINDIR))/limine-hdd.bin'
 ifneq ($(BUILD_CD),no)
 	cd '$(call SHESCAPE,$(SRCDIR))/stage1/cd'  && nasm bootsect.asm @WERROR@ -fbin -DBUILDDIR="'"'$(call NASMESCAPE,$(BUILDDIR))'"'" -o '$(call SHESCAPE,$(BINDIR))/limine-cd.bin'
-endif
-ifneq ($(BUILD_PXE),no)
-	cd '$(call SHESCAPE,$(SRCDIR))/stage1/pxe' && nasm bootsect.asm @WERROR@ -fbin -DBUILDDIR="'"'$(call NASMESCAPE,$(BUILDDIR))'"'" -o '$(call SHESCAPE,$(BINDIR))/limine-pxe.bin'
 endif
 	cp '$(call SHESCAPE,$(BUILDDIR))/common-bios/limine.sys' '$(call SHESCAPE,$(BINDIR))/'
 	touch '$(call SHESCAPE,$(BUILDDIR))/stage1.stamp'
@@ -531,17 +524,6 @@ full-hybrid-test:
 	qemu-system-x86_64 -m 512M -M q35 -bios ovmf-ia32/OVMF.fd -net none -smp 4   -hda test.iso -debugcon stdio
 	qemu-system-x86_64 -m 512M -M q35 -net none -smp 4   -cdrom test.iso -debugcon stdio
 	qemu-system-x86_64 -m 512M -M q35 -net none -smp 4   -hda test.iso -debugcon stdio
-
-.PHONY: pxe-test
-pxe-test:
-	$(MAKE) test-clean
-	$(MAKE) limine-bios
-	$(MAKE) -C test CROSS_FILE='$(call SHESCAPE,$(BUILDDIR))/cross-files/x86_64-toolchain.mk'
-	rm -rf test_image/
-	$(MKDIR_P) test_image/boot
-	sudo cp -rv $(BINDIR)/* test_image/boot/
-	sudo cp -rv test/* test_image/boot/
-	qemu-system-x86_64  -smp 4  -netdev user,id=n0,tftp=./test_image,bootfile=boot/limine-pxe.bin -device rtl8139,netdev=n0,mac=00:00:00:11:11:11 -debugcon stdio
 
 .PHONY: uefi-x86-64-test
 uefi-x86-64-test:

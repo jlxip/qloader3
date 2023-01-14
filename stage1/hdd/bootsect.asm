@@ -131,9 +131,6 @@ vector:
     mov ss, ax
 
     and edx, 0xff
-
-    push 0
-
     push edx
 
     push stage2.size

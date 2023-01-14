@@ -20,8 +20,6 @@
 #include <protos/linux.h>
 #include <protos/chainload.h>
 #include <menu.h>
-#include <pxe/pxe.h>
-#include <pxe/tftp.h>
 #include <drivers/disk.h>
 #include <sys/idt.h>
 #include <sys/cpu.h>
@@ -75,13 +73,7 @@ static bool stage3_init(struct volume *part) {
     return true;
 }
 
-enum {
-    BOOTED_FROM_HDD = 0,
-    BOOTED_FROM_PXE = 1,
-    BOOTED_FROM_CD = 2
-};
-
-noreturn void entry(uint8_t boot_drive, int boot_from) {
+noreturn void entry(uint8_t boot_drive) {
     // XXX DO NOT MOVE A20 ENABLE CALL
     if (!a20_enable()) {
         panic(false, "Could not enable A20 line");
@@ -94,13 +86,7 @@ noreturn void entry(uint8_t boot_drive, int boot_from) {
 
     disk_create_index();
 
-    if (boot_from == BOOTED_FROM_HDD || boot_from == BOOTED_FROM_CD) {
-        boot_volume = volume_get_by_bios_drive(boot_drive);
-    } else if (boot_from == BOOTED_FROM_PXE) {
-        pxe_init();
-        boot_volume = pxe_bind_volume();
-    }
-
+    boot_volume = volume_get_by_bios_drive(boot_drive);
     if (boot_volume == NULL) {
         panic(false, "Could not determine boot drive");
     }

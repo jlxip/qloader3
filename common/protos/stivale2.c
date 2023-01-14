@@ -24,7 +24,6 @@
 #include <fs/file.h>
 #include <mm/pmm.h>
 #include <stivale2.h>
-#include <pxe/tftp.h>
 #include <drivers/edid.h>
 #include <drivers/vga_textmode.h>
 #include <drivers/gop.h>
@@ -726,18 +725,6 @@ have_tm_tag:;
 
     append_tag(stivale2_struct, (struct stivale2_tag *)tag);
     }
-
-#if defined (BIOS)
-    //////////////////////////////////////////////
-    // Create PXE struct tag
-    //////////////////////////////////////////////
-    if (boot_volume->pxe) {
-        struct stivale2_struct_tag_pxe_server_info *tag = ext_mem_alloc(sizeof(struct stivale2_struct_tag_pxe_server_info));
-        tag->tag.identifier = STIVALE2_STRUCT_TAG_PXE_SERVER_INFO;
-        tag->server_ip = get_boot_server_info();
-        append_tag(stivale2_struct, (struct stivale2_tag *)tag);
-    }
-#endif
 
     //////////////////////////////////////////////
     // Create PMRs struct tag

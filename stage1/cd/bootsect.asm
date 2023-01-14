@@ -85,7 +85,6 @@ pmode:
     mov ss, ax
 
     ; Time to handle control over to the decompressor
-    push 2
     and edx, 0xff
     push edx  ; Boot drive
     push stage2.size

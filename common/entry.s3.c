@@ -17,8 +17,6 @@
 #include <lib/elf.h>
 #include <mm/pmm.h>
 #include <menu.h>
-#include <pxe/pxe.h>
-#include <pxe/tftp.h>
 #include <drivers/disk.h>
 #include <sys/lapic.h>
 #include <lib/readline.h>

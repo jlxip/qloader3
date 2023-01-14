@@ -25,7 +25,6 @@
 #include <fs/file.h>
 #include <mm/pmm.h>
 #include <stivale2.h>
-#include <pxe/tftp.h>
 #include <drivers/edid.h>
 #include <drivers/vga_textmode.h>
 #include <lib/rand.h>
@@ -46,35 +45,27 @@ static uint64_t reported_addr(void *addr) {
 
 static struct limine_file get_file(struct file_handle *file, char *cmdline) {
     struct limine_file ret = {0};
+    struct volume *vol = file->vol;
 
-    if (file->pxe) {
-        ret.media_type = LIMINE_MEDIA_TYPE_TFTP;
+    if (vol->is_optical) {
+        ret.media_type = LIMINE_MEDIA_TYPE_OPTICAL;
+    }
 
-        ret.tftp_ip = file->pxe_ip;
-        ret.tftp_port = file->pxe_port;
-    } else {
-        struct volume *vol = file->vol;
+    ret.partition_index = vol->partition;
 
-        if (vol->is_optical) {
-            ret.media_type = LIMINE_MEDIA_TYPE_OPTICAL;
-        }
+    ret.mbr_disk_id = mbr_get_id(vol);
 
-        ret.partition_index = vol->partition;
+    if (vol->guid_valid) {
+        memcpy(&ret.part_uuid, &vol->guid, sizeof(struct limine_uuid));
+    }
 
-        ret.mbr_disk_id = mbr_get_id(vol);
+    if (vol->part_guid_valid) {
+        memcpy(&ret.gpt_part_uuid, &vol->part_guid, sizeof(struct limine_uuid));
+    }
 
-        if (vol->guid_valid) {
-            memcpy(&ret.part_uuid, &vol->guid, sizeof(struct limine_uuid));
-        }
-
-        if (vol->part_guid_valid) {
-            memcpy(&ret.gpt_part_uuid, &vol->part_guid, sizeof(struct limine_uuid));
-        }
-
-        struct guid gpt_disk_uuid;
-        if (gpt_get_guid(&gpt_disk_uuid, vol->backing_dev ?: vol) == true) {
-            memcpy(&ret.gpt_disk_uuid, &gpt_disk_uuid, sizeof(struct limine_uuid));
-        }
+    struct guid gpt_disk_uuid;
+    if (gpt_get_guid(&gpt_disk_uuid, vol->backing_dev ?: vol) == true) {
+        memcpy(&ret.gpt_disk_uuid, &gpt_disk_uuid, sizeof(struct limine_uuid));
     }
 
     ret.path = reported_addr(file->path);
